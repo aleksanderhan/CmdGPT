@@ -12,7 +12,16 @@ except:
 	print("You need to set the OPENAI_API_KEY environement variable to run this script.")
 	exit()
 
-MAX_CONTEXT_LENGTH = 4096
+models = [
+	{
+		"model": "gpt-3.5-turbo",
+		"max_context": 4096
+	},
+	{
+		"model": "gpt-4",
+		"max_context": 8192
+	}
+]
 
 directives = [
 	[{"role": "system", "content": "You are a personal assistant that answers questions as best as you can."}],
@@ -65,33 +74,42 @@ directives = [
 	{
 		"role": "system",
 		"content": "assistant: The content of file1.txt is:\n'Lorem Ipsum'"
-	}],
+	},
+	{
+		"role": "system",
+		"content": "user: open firefox."
+	}, 
+	{
+		"role": "system",
+		"content": "assistant: <cmd>firefox</cmd>"
+	}
+	],
 ]
 
 
-def generate_response(messages, n=1, stream=True):
+def generate_response(messages, n=1, stream=True, model="gpt-3.5-turbo", max_context_length=4096):
 	messages = [{"role": msg["role"], "content": msg["content"]} for msg in messages]
 
 	response = openai.ChatCompletion.create(
-		model="gpt-3.5-turbo",
+		model=model,
 		messages=messages,
 		temperature=1,
 		n=n,
-		max_tokens=MAX_CONTEXT_LENGTH-num_tokens_from_messages(messages),
+		max_tokens=max_context_length-num_tokens_from_messages(messages),
 		stream = stream
 	)
 	
 	return response
 
 
-def num_tokens_from_messages(messages, model="gpt-3.5-turbo-0301"):
+def num_tokens_from_messages(messages, model="gpt-3.5-turbo"):
 	messages = [{"role": msg["role"], "content": msg["content"]} for msg in messages]
 	"""Returns the number of tokens used by a list of messages."""
 	try:
 		encoding = tiktoken.encoding_for_model(model)
 	except KeyError:
 		encoding = tiktoken.get_encoding("cl100k_base")
-	if model == "gpt-3.5-turbo-0301":  # note: future models may deviate from this
+	if model == "gpt-3.5-turbo" or model == "gpt-4":  # note: future models may deviate from this
 		num_tokens = 0
 		for message in messages:
 			num_tokens += 4  # every message follows <im_start>{role/name}\n{content}<im_end>\n
@@ -111,7 +129,7 @@ def has_cmd(content):
 	return soup.find('cmd')
 
 
-def summarize_chat(text):
+def summarize_chat(text, model, max_context_length):
 	messages = [
 		{	
 			"role": "system",
@@ -129,11 +147,11 @@ def summarize_chat(text):
 			"content": "Summarize and compress the following chat, but keep the details:\n-----\n{}\n-----\n".format(text)
 		}
 	]
-	response = generate_response(messages, stream=False)
+	response = generate_response(messages, stream=False, model = self.model["model"], max_context_length = self.model["max_context"])
 	return response['choices'][0]['message']['content']
 
 
-def compress_text(text):
+def compress_text(text, model, max_context_length):
 	messages = [
 		{	
 			"role": "system",
@@ -145,7 +163,7 @@ def compress_text(text):
 			"content": "Summarize and compress the following text, but keep the details:\n-----\n{}\n-----\n".format(text)
 		}
 	]
-	response = generate_response(messages, stream=False)
+	response = generate_response(messages, stream=False, model = self.model["model"], max_context_length = self.model["max_context"])
 	return response['choices'][0]['message']['content']
 
 
@@ -164,15 +182,17 @@ class ChatGPT:
 		self.directive = directives[self.directive_number]
 		self.messages = []
 		self.directive_length = num_tokens_from_messages(self.directive)
+		self.model_number = 0
+		self.model = models[self.model_number]
 
 	def add_message(self, message):
 		tokens_in_message = num_tokens_from_messages([message])
-		if tokens_in_message > MAX_CONTEXT_LENGTH:
+		if tokens_in_message > self.model["max_context"]:
 			print(message)
 			print("THE MESSAGE IS TOO BIG ({} TOKENS) TO FIT IN THE CHAT, SKIPPING MESSAGE\n".format(tokens_in_message))
-		elif tokens_in_message > int(MAX_CONTEXT_LENGTH*0.8):
+		elif tokens_in_message > int(self.model["max_context"]*0.8):
 			print("THE MESSAGE IS BIG, TRYING TO COMPRESS IT FIRST")
-			compressed = compress_text(message["content"])
+			compressed = compress_text(message["content"], self.model["model"], self.model["max_context"])
 			message = {"role": message['role'], "content": compressed['content']}
 		self.messages.append(message)
 
@@ -182,11 +202,13 @@ class ChatGPT:
 		print("1. clear - Clear the message log.")
 		print("2. msg - Print message log.")
 		print("3. change - Print an enumerated list of different directive choices.")
+		print("4. compress - Compress message log")
+		print("5. model - Change model")
 
 		while True:
 			print()
 			print("----------------------------------------------------------------")
-			print("#{} user_input ({}/{})>> ".format(self.directive_number, num_tokens_from_messages(self.messages), MAX_CONTEXT_LENGTH - self.directive_length), end="")
+			print("{}, directive: {} user_input ({}/{})>> ".format(self.model["model"], self.directive_number, num_tokens_from_messages(self.messages), self.model["max_context"] - self.directive_length), end="")
 			user_input = input()
 			print()
 
@@ -201,10 +223,14 @@ class ChatGPT:
 				    pprint.pprint(msg)
 			elif user_input == "change" or user_input == "!3":
 				self.change_directive()
+			elif user_input == "compress" or user_input == "!4":
+				self.compress_and_clear_messages()
+			elif user_input == "model" or user_input == "!5":
+				self.change_model()
 			else:
 				self.add_message({"role": "user", "content": user_input, "compressed": False})
 
-				if num_tokens_from_messages(self.messages) > int(MAX_CONTEXT_LENGTH*0.7):
+				if num_tokens_from_messages(self.messages) > int(self.model["max_context"]*0.7):
 					self.compress_and_clear_messages()					
 
 				content = self.generate_response(self.directive + self.messages)
@@ -215,6 +241,22 @@ class ChatGPT:
 				else:
 					self.add_message({"role": "assistant", "content": content, "compressed": False})
 					print()
+
+
+	def change_model(self):
+		user_input = None
+		while not user_input:
+			for i, model in enumerate(models):
+				print(i, "-", model["model"])
+			print("Choose model:", end="")
+			try:
+				user_input = int(input())
+				self.model_number = user_input
+				self.model = models[self.model_number]
+			except Exception as e:
+				print(e)
+				print("Choose a number")
+
 
 	def change_directive(self):
 		user_input = None
@@ -233,13 +275,12 @@ class ChatGPT:
 
 	def run_cmd(self, cmd):
 		print()
-		print("### Running shell cmd:", cmd)
-		print()
+		#print("### Running shell cmd:", cmd)
+		#print()
 		try:
 			proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 			o, e = proc.communicate()
 			output = o.decode("utf-8") + e.decode("utf-8")
-			if output == "": return
 			self.add_message({"role": "system", "content": output, "compressed": False})
 			content = self.generate_response(self.directive + self.messages)
 			self.add_message({"role": "assistant", "content": content, "compressed": False})
@@ -248,13 +289,13 @@ class ChatGPT:
 
 	def compress_and_clear_messages(self):
 		to_compress = []
-		while num_tokens_from_messages(self.messages) > int(MAX_CONTEXT_LENGTH*0.3):
+		while num_tokens_from_messages(self.messages) > int(self.model["max_context"]*0.3):
 			if not self.messages[0]['compressed']:
 				to_compress.append(self.messages[0])
 			self.messages.pop(0)
 
 		joined_text = join_messages(to_compress)
-		summary = summarize_chat(joined_text)
+		summary = summarize_chat(joined_text, self.model["model"], self.model["max_context"])
 		self.messages.insert(0, {
 				"role": "system",
 				"content": "This is a summary of the previous conversation:\n" + summary,
@@ -263,11 +304,11 @@ class ChatGPT:
 
 	def generate_response(self, messages):
 		content = ""
-		for resp in generate_response(messages):
+		for resp in generate_response(messages, model = self.model["model"], max_context_length = self.model["max_context"]):
 			try:
 				delta = resp["choices"][0]["delta"]["content"]
 				content = content + delta
-				if not has_cmd(content): print(delta, end="")
+				print(delta, end="")
 			except KeyError as ke:
 				pass
 		return content
