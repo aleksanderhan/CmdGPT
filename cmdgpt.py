@@ -9,8 +9,10 @@ from bs4 import BeautifulSoup
 try:
 	openai.api_key = os.environ["OPENAI_API_KEY"]
 except:
-	print("You need to set the OPENAI_API_KEY environement variable to run this script.")
+	print("You need to set the OPENAI_API_KEY environment variable to run this script.")
 	exit()
+
+
 
 models = [
 	{
@@ -57,7 +59,7 @@ directives = [
 	},
 	{
 		"role": "system",
-		"content": "assistant: The content of the current working directory is 'file1.txt'."
+		"content": "assistant: The content of the current working directory is: 'file1.txt'."
 	},
 	{
 		"role": "system",
@@ -82,18 +84,17 @@ directives = [
 	{
 		"role": "system",
 		"content": "assistant: <cmd>firefox</cmd>"
-	}
-	],
+	}]
 ]
 
 
-def generate_response(messages, n=1, stream=True, model="gpt-3.5-turbo", max_context_length=4096):
+def generate_response(messages, n=1, stream=True, temp=1, model="gpt-3.5-turbo", max_context_length=4096):
 	messages = [{"role": msg["role"], "content": msg["content"]} for msg in messages]
 
 	response = openai.ChatCompletion.create(
 		model=model,
 		messages=messages,
-		temperature=1,
+		temperature=temp,
 		n=n,
 		max_tokens=max_context_length-num_tokens_from_messages(messages),
 		stream = stream
@@ -124,9 +125,9 @@ def num_tokens_from_messages(messages, model="gpt-3.5-turbo"):
 		raise NotImplementedError()
 
 
-def has_cmd(content):
+def has_tag(content, tag='cmd'):
 	soup = BeautifulSoup(content, "lxml")
-	return soup.find('cmd')
+	return soup.find(tag)
 
 
 def summarize_chat(text, model, max_context_length):
@@ -147,7 +148,7 @@ def summarize_chat(text, model, max_context_length):
 			"content": "Summarize and compress the following chat, but keep the details:\n-----\n{}\n-----\n".format(text)
 		}
 	]
-	response = generate_response(messages, stream=False, model = self.model["model"], max_context_length = self.model["max_context"])
+	response = generate_response(messages, stream=False, model=self.model["model"], max_context_length=self.model["max_context"])
 	return response['choices'][0]['message']['content']
 
 
@@ -163,8 +164,9 @@ def compress_text(text, model, max_context_length):
 			"content": "Summarize and compress the following text, but keep the details:\n-----\n{}\n-----\n".format(text)
 		}
 	]
-	response = generate_response(messages, stream=False, model = self.model["model"], max_context_length = self.model["max_context"])
+	response = generate_response(messages, stream=False, model=self.model["model"], max_context_length=self.model["max_context"])
 	return response['choices'][0]['message']['content']
+
 
 
 def join_messages(messages):
@@ -197,27 +199,21 @@ class ChatGPT:
 		self.messages.append(message)
 
 	def run(self):
-		print("This chatbot has a few reserved keywords for system management.")
-		print("0. exit - Exit program.")
-		print("1. clear - Clear the message log.")
-		print("2. msg - Print message log.")
-		print("3. change - Print an enumerated list of different directive choices.")
-		print("4. compress - Compress message log")
-		print("5. model - Change model")
+		self.print_help()
 
 		while True:
 			print()
-			print("----------------------------------------------------------------")
-			print("{}, directive: {} user_input ({}/{})>> ".format(self.model["model"], self.directive_number, num_tokens_from_messages(self.messages), self.model["max_context"] - self.directive_length), end="")
+			print("-------------------------------------------------------------------------------------------")
+			print("{}, directive: {}, user_input ({}/{})>> ".format(self.model["model"], self.directive_number, num_tokens_from_messages(self.messages), self.model["max_context"] - self.directive_length), end="")
 			user_input = input()
 			print()
 
 			if user_input == "":
 				continue
-			if user_input == "exit" or user_input == "!0":
+			elif user_input == "exit" or user_input == "!0":
 				exit()
-			elif user_input == "clear" or user_input == "!1":
-				self.messages = []
+			elif user_input == "help" or user_input == "!1":
+				self.print_help()
 			elif user_input == "msg" or user_input == "!2":
 				for msg in self.messages:
 				    pprint.pprint(msg)
@@ -227,6 +223,8 @@ class ChatGPT:
 				self.compress_and_clear_messages()
 			elif user_input == "model" or user_input == "!5":
 				self.change_model()
+			elif user_input == "clear" or user_input == "!6":
+				self.messages = []
 			else:
 				self.add_message({"role": "user", "content": user_input, "compressed": False})
 
@@ -234,18 +232,27 @@ class ChatGPT:
 					self.compress_and_clear_messages()					
 
 				content = self.generate_response(self.directive + self.messages)
+				self.add_message({"role": "assistant", "content": content, "compressed": False})
 				cmd = has_cmd(content)
 
 				if self.directive_number == 2 and cmd is not None: # CmdGPT
 					self.run_cmd(cmd.string)
-				else:
-					self.add_message({"role": "assistant", "content": content, "compressed": False})
-					print()
+	
+				print()
 
+	def print_help(self):
+		print("This chatbot has a few reserved keywords for system management.")
+		print("0. exit - Exit program.")
+		print("1. help - Print help message")
+		print("2. msg - Print message log.")
+		print("3. change - Print an enumerated list of different directive choices.")
+		print("4. compress - Compress message log")
+		print("5. model - Change model")
+		print("6. clear - Clear the message log.")
 
 	def change_model(self):
 		user_input = None
-		while not user_input:
+		while not user_input and not user_input == 0:
 			for i, model in enumerate(models):
 				print(i, "-", model["model"])
 			print("Choose model:", end="")
@@ -260,7 +267,7 @@ class ChatGPT:
 
 	def change_directive(self):
 		user_input = None
-		while not user_input:
+		while not user_input and not user_input == 0:
 			for i, directive in enumerate(directives):
 				print(i, "-", directive[0]['content'])
 			print("Choose directive: ", end="")

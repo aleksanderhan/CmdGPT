@@ -1,5 +1,5 @@
 # CmdGPT
-python program that uses chatgpt to perform various tasks
+python program that uses chatgpt to perform various tasks, like interacting with a unix terminal.
 
 ## How to run
 
