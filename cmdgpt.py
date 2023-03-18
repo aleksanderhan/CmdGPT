@@ -31,7 +31,7 @@ directives = [
 	[{
 		"role": "system",
 		"content": """You are a natural language to unix terminal computer interface program, that takes natural language description of tasks that can be performed on the unix terminal,
-					and emits a unix command on the form '<cmd>unix command</cmd>' to be ran in the terminal, you will get a response from the system of the output of the command.
+					and emits a unix command on the form '<cmd>unix command</cmd>' to be ran in the terminal. You will get a response from the system of the output of the command.
 					You take this output and return it to the user in a natural language format. ALWAYS TELL THE USER WHAT THE RESULT OF THE COMMAND WAS. You can ask the user to be more 
 					spesific or explain himself before you run a command if something is unclear. 
 					WHAT IS IMPORTANT IS THAT WHEN YOU WANT TO RUN A COMMAND, YOU HAVE TO ENCLOSE THE COMMAND IN TAGS LIKE THIS: '<cmd>command</cmd>'. NEVER USE THE CMD TAG WHEN YOU DON'T
@@ -79,7 +79,7 @@ directives = [
 	},
 	{
 		"role": "system",
-		"content": "user: open firefox."
+		"content": "user: start firefox."
 	}, 
 	{
 		"role": "system",
@@ -177,7 +177,7 @@ def join_messages(messages):
 	return res
 
 
-class ChatGPT:
+class CmdGPT:
 
 	def __init__(self):
 		self.directive_number = 0
@@ -233,7 +233,7 @@ class ChatGPT:
 
 				content = self.generate_response(self.directive + self.messages)
 				self.add_message({"role": "assistant", "content": content, "compressed": False})
-				cmd = has_cmd(content)
+				cmd = has_tag(content)
 
 				if self.directive_number == 2 and cmd is not None: # CmdGPT
 					self.run_cmd(cmd.string)
@@ -321,7 +321,7 @@ class ChatGPT:
 		return content
 
 
-qti = ChatGPT()
+qti = CmdGPT()
 try:
 	qti.run()
 except KeyboardInterrupt as ki:
