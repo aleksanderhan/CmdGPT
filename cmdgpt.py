@@ -197,6 +197,7 @@ class CmdGPT:
 
         self.recording = False
         self.sample_rate = 44100
+        self.audio_filename = "audio_input.mp3"
 
     def add_message(self, message):
         tokens_in_message = num_tokens_from_messages([message])
@@ -215,7 +216,6 @@ class CmdGPT:
         while True:
             print()
             print("-------------------------------------------------------------------------------------------")
-            #print("{}, directive: {}, user_input ({}/{})>> ".format(self.model["model"], self.directive_number, num_tokens_from_messages(self.messages), self.model["max_context"] - self.directive_length), end="")
 
             self.audio_data = []
             self.user_input = ""
@@ -272,10 +272,10 @@ class CmdGPT:
             # Convert the WAV file to MP3 format
             wav_io.seek(0)
             audio = AudioSegment.from_wav(wav_io)
-            audio.export("audio_input.mp3", format="mp3")
+            audio.export(self.audio_filename, format="mp3")
 
             # Transcribe the recorded audio using OpenAI API
-            audio_file = open("audio_input.mp3", "rb")
+            audio_file = open(self.audio_filename, "rb")
             transcript = openai.Audio.transcribe("whisper-1", audio_file)
             print(transcript["text"])
             self.user_input = transcript["text"]
@@ -287,7 +287,12 @@ class CmdGPT:
                 await loop.run_in_executor(None, audio_listener.join)
 
     async def text_input(self):
-        self.user_input = await ainput("{}, directive: {}, user_input ({}/{})>> ".format(self.model["model"], self.directive_number, num_tokens_from_messages(self.messages), self.model["max_context"] - self.directive_length))
+        self.user_input = await ainput("{}, directive: {}, user_input ({}/{})>> ".format(
+            self.model["model"], 
+            self.directive_number, 
+            num_tokens_from_messages(self.messages), 
+            self.model["max_context"] - self.directive_length
+        ))
         print()
 
     def on_press(self, key):
@@ -345,8 +350,6 @@ class CmdGPT:
 
     def run_cmd(self, cmd):
         print()
-        #print("### Running shell cmd:", cmd)
-        #print()
         try:
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
             o, e = proc.communicate()
@@ -382,6 +385,9 @@ class CmdGPT:
             except KeyError as ke:
                 pass
         return content
+
+    def __del__(self):
+        os.remove(self.audio_filename)
 
 
 qti = CmdGPT()

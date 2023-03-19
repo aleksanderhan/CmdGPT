@@ -1,6 +1,6 @@
 # CmdGPT
 python program that uses chatgpt to perform various tasks, like interacting with a unix terminal. It can record audio
-by holding down the left `crtl` key, and uses whisper api to do a speech-to-text transformation of the audio, that is
+by holding down the left `ctrl` key, and uses whisper api to do a speech-to-text transformation of the audio, that is
 piped back to chatgpt, just like writing the input by keyboard.
 
 ## How to run
