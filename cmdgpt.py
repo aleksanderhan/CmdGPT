@@ -21,7 +21,6 @@ except:
     exit()
 
 
-
 models = [
     {
         "model": "gpt-3.5-turbo",
@@ -35,15 +34,59 @@ models = [
 
 directives = [
     [{"role": "system", "content": "You are a personal assistant that answers questions as best as you can."}],
-    [{"role": "system", "content": "You are a python code generator that translates natural language input from the user into python code. When the user says something, you respond in python code and nothing else."}],
+    [{
+        "role": "system", 
+        "content": """You are a python code generator that translates natural language input from the user into python code. When the user says something, you respond in 
+python code and nothing else. The user can ask you to refactor the previous code, and you will reply with the refactored code."""
+    },
+    {
+        "role": "system",
+        "content": "The following is an example:"
+    },
+    {
+        "role": "system",
+        "content": "user: I want a function that calculates the fibonacci sequence."
+    },
+    {
+        "role": "system",
+        "content": """assistant:
+def fibonacci(n):
+    if n == 0:
+        return 0
+    elif n == 1:
+        return 1
+    else:
+        return fibonacci(n - 1) + fibonacci(n - 2)"""
+    },
+    {
+        "role": "system",
+        "content": "user: I want a faster approach."
+    },
+    {
+        "role": "system",
+        "content": """assistant:
+def fibonacci(n):
+    if n == 0:
+        return 0
+    elif n == 1:
+        return 1
+    a, b = 0, 1
+    for _ in range(2, n + 1):
+        a, b = b, a + b
+    return b"""
+    }],
     [{
         "role": "system",
         "content": """You are a natural language to unix terminal computer interface program, that takes natural language description of tasks that can be performed on the unix terminal,
-                    and emits a unix command on the form '<cmd>unix command</cmd>' to be ran in the terminal. You will get a response from the system of the output of the command.
-                    You take this output and return it to the user in a natural language format. ALWAYS TELL THE USER WHAT THE RESULT OF THE COMMAND WAS. You can ask the user to be more 
-                    spesific or explain himself before you run a command if something is unclear. 
-                    WHAT IS IMPORTANT IS THAT WHEN YOU WANT TO RUN A COMMAND, YOU HAVE TO ENCLOSE THE COMMAND IN TAGS LIKE THIS: '<cmd>command</cmd>'. NEVER USE THE CMD TAG WHEN YOU DON'T
-                    WANT TO RUN A COMMAND. Here's an example:"""
+and emits a unix command on the form '<cmd>unix command</cmd>' to be ran in the terminal. You will get a response from the system of the output of the command.
+You take this output and return it to the user in a natural language format. ALWAYS TELL THE USER WHAT THE RESULT OF THE COMMAND WAS. You can ask the user to be more 
+spesific or explain himself before you run a command if something is unclear. 
+WHAT IS IMPORTANT IS THAT WHEN YOU WANT TO RUN A COMMAND, YOU HAVE TO ENCLOSE THE COMMAND IN TAGS LIKE THIS: '<cmd>command</cmd>'. NEVER USE THE CMD TAG WHEN YOU DON'T
+WANT TO RUN A COMMAND."""
+    },
+    {
+        "role": "system",
+        "content": "The following is an example:"
     },
     {
         "role": "system",
@@ -143,13 +186,13 @@ def summarize_chat(text, model, max_context_length):
         {   
             "role": "system",
             "content": """You are a text bot that summarizes and compresses text. You receive a text of the history of a chat between three participants, user, assistant and system, 
-            on the form: 
-            -----
-            <msg1>\{participant 1\}: \{some text written by participant 1\}</msg1>
-            <msg2>\{participant 2\}: \{some text written by participant 2\}</msg2>
-            ...
-            -----
-            Your job is to summarize the conversation between the participants and compress it down to the essentials to be used as a reference later."""
+on the form: 
+-----
+<msg1>\{participant 1\}: \{some text written by participant 1\}</msg1>
+<msg2>\{participant 2\}: \{some text written by participant 2\}</msg2>
+...
+-----
+Your job is to summarize the conversation between the participants and compress it down to the essentials to be used as a reference later."""
         },
         {
             "role": "user",
@@ -165,7 +208,7 @@ def compress_text(text, model, max_context_length):
         {   
             "role": "system",
             "content": """You are a text bot that recieves text that is too long to fit into a message. Your job is to compress it by being more terse, removing unnecessary
-                        words and sentences or rewriting parts of it, but still keeping the information intact in the message. The whole point is to compress the text into fewer tokens."""
+words and sentences or rewriting parts of it, but still keeping the information intact in the message. The whole point is to compress the text into fewer tokens."""
         },
         {
             "role": "user",
@@ -194,6 +237,7 @@ class CmdGPT:
         self.directive_length = num_tokens_from_messages(self.directive)
         self.model_number = 0
         self.model = models[self.model_number]
+        self.temperature = 1
 
         self.recording = False
         self.sample_rate = 44100
@@ -210,6 +254,17 @@ class CmdGPT:
             message = {"role": message['role'], "content": compressed['content']}
         self.messages.append(message)
 
+    def print_help(self):
+        print("This chatbot has a few reserved keywords for system management.")
+        print("0. exit - Exit program.")
+        print("1. help - Print help message")
+        print("2. msg - Print message log.")
+        print("3. change - Print an enumerated list of different directive choices.")
+        print("4. compress - Compress message log")
+        print("5. model - Change model")
+        print("6. clear - Clear the message log.")
+        print("7. temp - Change temperature.")
+
     def run(self):
         self.print_help()
 
@@ -218,8 +273,9 @@ class CmdGPT:
             print("-------------------------------------------------------------------------------------------")
 
             self.audio_data = []
-            self.user_input = ""
+            self.user_input = None
             asyncio.run(self.get_user_input())
+            print()
 
             if self.user_input == "":
                 continue
@@ -238,6 +294,8 @@ class CmdGPT:
                 asyncio.run(self.change_model())
             elif self.user_input == "clear" or self.user_input == "!6":
                 self.messages = []
+            elif self.user_input == "temp" or self.user_input == "!7":
+                asyncio.run(self.change_temperature())
             else:
                 self.add_message({"role": "user", "content": self.user_input, "compressed": False})
 
@@ -246,7 +304,7 @@ class CmdGPT:
 
                 content = self.generate_response(self.directive + self.messages)
                 self.add_message({"role": "assistant", "content": content, "compressed": False})
-                cmd = has_tag(content)
+                cmd = has_tag(content, tag="cmd")
 
                 if self.directive_number == 2 and cmd is not None: # CmdGPT
                     self.run_cmd(cmd.string)
@@ -275,10 +333,10 @@ class CmdGPT:
             audio.export(self.audio_filename, format="mp3")
 
             # Transcribe the recorded audio using OpenAI API
-            audio_file = open(self.audio_filename, "rb")
-            transcript = openai.Audio.transcribe("whisper-1", audio_file)
-            print(transcript["text"])
-            self.user_input = transcript["text"]
+            with open(self.audio_filename, "rb") as audio_file:
+                transcript = openai.Audio.transcribe("whisper-1", audio_file, langauge="en")
+                print(transcript["text"])
+                self.user_input = transcript["text"]
 
     async def audio_input(self):
         loop = asyncio.get_event_loop()
@@ -308,16 +366,6 @@ class CmdGPT:
         if self.recording:
             self.audio_data.append(indata.copy())
 
-    def print_help(self):
-        print("This chatbot has a few reserved keywords for system management.")
-        print("0. exit - Exit program.")
-        print("1. help - Print help message")
-        print("2. msg - Print message log.")
-        print("3. change - Print an enumerated list of different directive choices.")
-        print("4. compress - Compress message log")
-        print("5. model - Change model")
-        print("6. clear - Clear the message log.")
-
     async def change_model(self):
         user_input = None
         while not user_input and not user_input == 0:
@@ -339,6 +387,7 @@ class CmdGPT:
             print("Choose directive:")
             for i, directive in enumerate(directives):
                 print(i, "-", directive[0]['content'])
+                print()
             try:
                 user_input = int(await ainput())
                 self.directive_number = user_input
@@ -347,6 +396,17 @@ class CmdGPT:
             except Exception as e:
                 print(e)
                 print("Choose a number")
+
+    async def change_temperature(self):
+        user_input = None
+        while not user_input and not user_input == 0:
+            print("Choose a temperature in the range [0-2]:")
+            try:
+                user_input = float(await ainput())
+                self.temperature = user_input
+            except Exception as e:
+                print(e)
+                print("Choose a number between 0 and 2.")
 
     def run_cmd(self, cmd):
         print()
@@ -377,7 +437,7 @@ class CmdGPT:
 
     def generate_response(self, messages):
         content = ""
-        for resp in generate_response(messages, model = self.model["model"], max_context_length = self.model["max_context"]):
+        for resp in generate_response(messages, temp=self.temperature, model=self.model["model"], max_context_length=self.model["max_context"]):
             try:
                 delta = resp["choices"][0]["delta"]["content"]
                 content = content + delta
