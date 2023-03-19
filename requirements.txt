@@ -1,2 +1,8 @@
 tiktoken
 openai
+pynput
+sounddevice
+wavio
+pydub
+numpy
+aioconsole
