@@ -334,7 +334,7 @@ class CmdGPT:
 
             # Transcribe the recorded audio using OpenAI API
             with open(self.audio_filename, "rb") as audio_file:
-                transcript = openai.Audio.transcribe("whisper-1", audio_file, langauge="en")
+                transcript = openai.Audio.transcribe("whisper-1", audio_file, language="en")
                 print(transcript["text"])
                 self.user_input = transcript["text"]
 
