@@ -331,9 +331,9 @@ class CmdGPT:
     async def change_directive(self):
         user_input = None
         while not user_input and not user_input == 0:
+            print("Choose directive:")
             for i, directive in enumerate(directives):
                 print(i, "-", directive[0]['content'])
-            print("Choose directive: ", end="")
             try:
                 user_input = int(await ainput())
                 self.directive_number = user_input
