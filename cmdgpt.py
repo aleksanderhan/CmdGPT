@@ -106,15 +106,31 @@ WANT TO RUN A COMMAND."""
     },
     {
         "role": "system",
-        "content": "system: file1.txt"
+        "content": "system: file1.txt videos"
     },
     {
         "role": "system",
-        "content": "assistant: The content of the current working directory is: 'file1.txt'."
+        "content": "assistant: The content of the current working directory is: file1.txt and videos."
     },
     {
         "role": "system",
-        "content": "user: whats the content of that file?"
+        "content": "user: Which are files and which are directories?"
+    },
+    {
+        "role": "system",
+        "content": "assistant: <cmd>ls -F<cmd>"
+    },
+    {
+        "role": "system",
+        "content": "system: file.txt videos/"
+    },
+    {
+        "role": "system",
+        "content": "assistant: 'file.txt' is a file, while 'videos' is a directory."
+    },
+    {
+        "role": "system",
+        "content": "user: whats the content of the file?"
     },
     {
         "role": "system",
