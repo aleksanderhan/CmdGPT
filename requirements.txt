@@ -7,3 +7,4 @@ pydub
 numpy
 aioconsole
 bs4
+lxml
