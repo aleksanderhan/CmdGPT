@@ -354,11 +354,11 @@ class CmdGPT:
         print()
 
     def on_press(self, key):
-        if key == Key.ctrl_l:
+        if key == Key.ctrl_r:
             self.recording = True
 
     def on_release(self, key):
-        if key == Key.ctrl_l:
+        if key == Key.ctrl_r:
             self.recording = False
             return False  # Stop listener
 
