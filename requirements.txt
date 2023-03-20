@@ -6,3 +6,4 @@ wavio
 pydub
 numpy
 aioconsole
+bs4
