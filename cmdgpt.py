@@ -447,7 +447,8 @@ class CmdGPT:
         return content
 
     def __del__(self):
-        os.remove(self.audio_filename)
+        if os.path.isfile(self.audio_filename):
+            os.remove(self.audio_filename)
 
 
 qti = CmdGPT()
