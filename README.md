@@ -4,25 +4,25 @@ by holding down the right `ctrl` key, and uses whisper api to do a speech-to-tex
 then piped back to chatgpt.
 
 ## Sample interaction
-  >> launch a calculator
+>> launch a calculator
 
-  <cmd>gnome-calculator &</cmd>
+\<cmd\>gnome-calculator &\</cmd\>
 
-  I'm sorry, I couldn't launch the calculator. It seems that 'gnome-calculator' is not installed on this system. Would you like me to try launching another calculator?
+I'm sorry, I couldn't launch the calculator. It seems that 'gnome-calculator' is not installed on this system. Would you like me to try launching another calculator?
 
-  >> install gnome-calculator
+>> install gnome-calculator
 
-  What os do you use?
+What os do you use?
 
-  >> ubuntu
+>> ubuntu
 
-  <cmd>sudo apt install gnome-calculator</cmd>
+<cmd>sudo apt install gnome-calculator</cmd>
 
-  I have installed 'gnome-calculator' successfully.
+I have installed 'gnome-calculator' successfully.
 
-  <cmd>gnome-calculator &</cmd>
+<cmd>gnome-calculator &</cmd>
 
-  I have launched the calculator.
+I have launched the calculator.
 
 
 ## How to run
