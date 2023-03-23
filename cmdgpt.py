@@ -315,19 +315,23 @@ class CmdGPT:
             elif self.user_input == "temp" or self.user_input == "!7":
                 asyncio.run(self.change_temperature())
             else:
-                self.add_message({"role": "user", "content": self.user_input, "compressed": False})
+                self.handle_input({"role": "user", "content": self.user_input, "compressed": False})
 
-                if num_tokens_from_messages(self.messages) > int(self.model["max_context"]*0.7):
-                    self.compress_and_clear_messages()                  
+    def handle_input(self, msg):
+        self.add_message(msg)
 
-                content = self.generate_response(self.directive + self.messages)
-                self.add_message({"role": "assistant", "content": content, "compressed": False})
-                cmd = has_tag(content, tag="cmd")
+        if num_tokens_from_messages(self.messages) > int(self.model["max_context"]*0.7):
+            self.compress_and_clear_messages()                  
 
-                if self.directive_number == 2 and cmd is not None: # CmdGPT
-                    self.run_cmd(cmd.string)
-    
-                print()
+        content = self.generate_response(self.directive + self.messages)
+        self.add_message({"role": "assistant", "content": content, "compressed": False})
+        cmd = has_tag(content, tag="cmd")
+
+        if self.directive_number == 2 and cmd is not None: # CmdGPT
+            result = self.run_cmd(cmd.string)
+            self.handle_input({"role": "system", "content": result, "compressed": False})
+            
+        print()
 
     async def get_user_input(self):
         audio_task = asyncio.create_task(self.audio_input())
@@ -431,10 +435,7 @@ class CmdGPT:
         try:
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
             o, e = proc.communicate()
-            output = o.decode("utf-8") + e.decode("utf-8")
-            self.add_message({"role": "system", "content": output, "compressed": False})
-            content = self.generate_response(self.directive + self.messages)
-            self.add_message({"role": "assistant", "content": content, "compressed": False})
+            return o.decode("utf-8") + e.decode("utf-8")    
         except Exception as e:
             print(e)
 
