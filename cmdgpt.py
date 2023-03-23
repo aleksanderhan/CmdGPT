@@ -8,6 +8,7 @@ import sounddevice as sd
 import numpy as np
 import wavio
 import asyncio
+import backoff
 from bs4 import BeautifulSoup
 from pynput import keyboard
 from pynput.keyboard import Key, Listener
@@ -155,6 +156,7 @@ WANT TO RUN A COMMAND."""
 ]
 
 
+@backoff.on_exception(backoff.expo, openai.error.RateLimitError)
 def generate_response(messages, n=1, stream=True, temp=1, model="gpt-3.5-turbo", max_context_length=4096):
     messages = [{"role": msg["role"], "content": msg["content"]} for msg in messages]
 
@@ -215,7 +217,7 @@ Your job is to summarize the conversation between the participants and compress 
             "content": "Summarize and compress the following chat, but keep the details:\n-----\n{}\n-----\n".format(text)
         }
     ]
-    response = generate_response(messages, stream=False, model=self.model["model"], max_context_length=self.model["max_context"])
+    response = generate_response(messages, stream=False, model=model["model"], max_context_length=model["max_context"])
     return response['choices'][0]['message']['content']
 
 
@@ -231,7 +233,7 @@ words and sentences or rewriting parts of it, but still keeping the information 
             "content": "Summarize and compress the following text, but keep the details:\n-----\n{}\n-----\n".format(text)
         }
     ]
-    response = generate_response(messages, stream=False, model=self.model["model"], max_context_length=self.model["max_context"])
+    response = generate_response(messages, stream=False, model=model["model"], max_context_length=model["max_context"])
     return response['choices'][0]['message']['content']
 
 
