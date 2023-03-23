@@ -150,7 +150,7 @@ WANT TO RUN A COMMAND."""
     }, 
     {
         "role": "system",
-        "content": "assistant: <cmd>firefox</cmd>"
+        "content": "assistant: <cmd>firefox &</cmd>"
     }]
 ]
 
