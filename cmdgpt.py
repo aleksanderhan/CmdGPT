@@ -165,7 +165,7 @@ def generate_response(messages, n=1, stream=True, temp=1, model="gpt-3.5-turbo",
         messages=messages,
         temperature=temp,
         n=n,
-        max_tokens=max_context_length-num_tokens_from_messages(messages),
+        max_tokens=max_context_length-num_tokens_from_messages(messages) - 1,
         stream = stream
     )
     
